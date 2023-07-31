@@ -221,7 +221,7 @@ namespace pnk
         template <template <typename, typename> typename, typename...>
         friend struct type_set;
 
-        static constexpr std::size_t npos = -1;
+        static constexpr std::size_t npos = static_cast<std::size_t>(-1);
     };
 } // namespace pnk
 
