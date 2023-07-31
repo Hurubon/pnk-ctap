@@ -148,14 +148,17 @@ namespace pnk
             if (auto const index = arguments.find_if(is_optional);
                 index != TypeSet::npos)
             {
-                auto const value = index != TypeSet::npos?
-                    curr.substr(index + 1) :
+                auto const value = equal != std::string_view::npos?
+                    curr.substr(equal + 1) :
                     *next;
+
                 arguments.apply(index, [value](auto& x)
                 {
                     parse_from_string(x, value);
                 });
-                return index == TypeSet::npos;
+
+                // If no equals sign was found, skip next token.
+                return equal == std::string_view::npos;
             }
 
             // TODO: Handle this better.
