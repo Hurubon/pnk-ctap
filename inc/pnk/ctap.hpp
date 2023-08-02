@@ -1,6 +1,7 @@
 #ifndef PNK_CTAP_HPP
 #define PNK_CTAP_HPP
 
+#include <cstdlib>
 #include <iterator>
 #include <concepts>
 #include <charconv>
