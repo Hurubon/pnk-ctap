@@ -119,6 +119,7 @@ namespace pnk
             // Flags are named and store bool.
             auto const is_flag = [label]<typename T>(T const&)
                 requires (std::same_as<typename T::type, bool>)
+            noexcept
             {
                 if constexpr (wordy)
                     return T::wordy == label;
@@ -129,7 +130,7 @@ namespace pnk
             if (auto const index = arguments.find_if(is_flag);
                 index != TypeSet::npos)
             {
-                arguments.apply(index, [](auto& x)
+                arguments.apply(index, [](auto& x) noexcept
                 {
                     parse_from_string(x, {});
                 });
@@ -139,6 +140,7 @@ namespace pnk
             // Options are named.
             auto const is_optional = [label]<typename T>(T const&)
                 requires (not std::same_as<typename T::type, bool>)
+            noexcept
             {
                 if constexpr (wordy)
                     return T::wordy == label;
@@ -153,7 +155,7 @@ namespace pnk
                     curr.substr(equal + 1) :
                     *next;
 
-                arguments.apply(index, [value](auto& x)
+                arguments.apply(index, [value](auto& x) noexcept
                 {
                     parse_from_string(x, value);
                 });
@@ -168,15 +170,15 @@ namespace pnk
 
         constexpr auto parse_position(std::string_view value) noexcept -> int
         {
-            auto const is_position = []<typename T>(T const& arg)
+            auto const is_position = []<typename T>(T const& a) noexcept
             {
-                return not arg.parsed;
+                return not a.parsed;
             };
 
             if (auto const index = arguments.find_if(is_position);
                 index != TypeSet::npos)
             {
-                arguments.apply(index, [value](auto& x)
+                arguments.apply(index, [value](auto& x) noexcept
                 {
                     parse_from_string(x, value);
                 });
