@@ -118,8 +118,8 @@ namespace pnk
 
             // Flags are named and store bool.
             auto const is_flag = [label]<typename T>(T const&)
-                requires (std::same_as<typename T::type, bool>)
             noexcept
+                requires (std::same_as<typename T::type, bool>)
             {
                 if constexpr (wordy)
                     return T::wordy == label;
@@ -139,8 +139,8 @@ namespace pnk
 
             // Options are named.
             auto const is_optional = [label]<typename T>(T const&)
-                requires (not std::same_as<typename T::type, bool>)
             noexcept
+                requires (not std::same_as<typename T::type, bool>)
             {
                 if constexpr (wordy)
                     return T::wordy == label;
