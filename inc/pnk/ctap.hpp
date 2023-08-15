@@ -70,10 +70,10 @@ namespace pnk
     requires (std::integral<T> or std::floating_point<T>)
     {
         auto [pointer, _] = std::from_chars(
-            string.begin(),
-            string.end(),
+            string.data(),
+            string.data() + string.size(),
             argument.value);
-        argument.parsed = pointer == string.end();
+        argument.parsed = pointer == string.data() + string.size();
     }
 
     template <
