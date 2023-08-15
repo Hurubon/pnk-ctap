@@ -217,7 +217,7 @@ namespace pnk
 
             auto const index = arguments.find_if([](auto const& arg) noexcept
             {
-                return declytype(arg)::needed and not arg.parsed;
+                return decltype(arg)::needed and not arg.parsed;
             });
 
             if (index == TypeSet::npos)
