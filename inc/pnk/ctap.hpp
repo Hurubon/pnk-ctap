@@ -215,9 +215,11 @@ namespace pnk
                     parse_position(current);
             }
 
-            auto const index = arguments.find_if([](auto const& arg) noexcept
+            auto const index = arguments.find_if([]<typename T>(
+                T const& arg)
+            noexcept
             {
-                return decltype(arg)::needed and not arg.parsed;
+                return T::needed and not arg.parsed;
             });
 
             if (index == TypeSet::npos)
