@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 #include <string_view>
+#include <iostream>
 
 #include <pnk/static_string.hpp>
 #include <pnk/type_set.hpp>
@@ -15,37 +16,41 @@
 namespace pnk
 {
     template <
-        pnk::static_string brief_,
-        pnk::static_string wordy_,
-        typename           T>
+        pnk::static_string brief_name,
+        pnk::static_string wordy_name,
+        typename           T,
+        bool               is_needed = false>
     struct argument
     {
-        static constexpr auto brief = brief_;
-        static constexpr auto wordy = wordy_;
+        static constexpr auto brief = brief_name;
+        static constexpr auto wordy = wordy_name;
+        static constexpr auto needed = is_needed;
 
         using type = T;
         mutable type value;
         mutable bool parsed = false;
     };
 
-    // HACK: For some reason, using argument<"", "", T> directly gives an error.
+    // HACK: For some reason, using argument<"", "", ...> gives an error.
     template <typename T>
-    struct empty_argument : pnk::argument<"", "", T> {};
+    struct unnamed_argument : pnk::argument<"", "", T, false> {};
 
     template <
-        typename           T,
         pnk::static_string brief,
-        pnk::static_string wordy>
+        pnk::static_string wordy,
+        typename           T,
+        bool               needed>
     constexpr auto parse_from_string(
-        pnk::argument<brief, wordy, T>& argument,
-        std::string_view                string)
+        pnk::argument<brief, wordy, T, needed>& argument,
+        std::string_view                        string)
     noexcept -> void = delete;
 
     template <
         pnk::static_string brief,
-        pnk::static_string wordy>
+        pnk::static_string wordy,
+        bool               needed>
     constexpr auto parse_from_string(
-        pnk::argument<brief, wordy, bool>& argument,
+        pnk::argument<brief, wordy, bool, needed>& argument,
         std::string_view)
     noexcept -> void
     {
@@ -54,12 +59,13 @@ namespace pnk
     }
 
     template <
-        typename           T,
         pnk::static_string brief,
-        pnk::static_string wordy>
+        pnk::static_string wordy,
+        typename           T,
+        bool               needed>
     constexpr auto parse_from_string(
-        pnk::argument<brief, wordy, T>& argument,
-        std::string_view                string)
+        pnk::argument<brief, wordy, T, needed>& argument,
+        std::string_view                        string)
     noexcept -> void
     requires (std::integral<T> or std::floating_point<T>)
     {
@@ -72,10 +78,11 @@ namespace pnk
 
     template <
         pnk::static_string brief,
-        pnk::static_string wordy>
+        pnk::static_string wordy,
+        bool               needed>
     constexpr auto parse_from_string(
-        pnk::argument<brief, wordy, std::string_view>& argument,
-        std::string_view                               string)
+        pnk::argument<brief, wordy, std::string_view, needed>& argument,
+        std::string_view                                       string)
     noexcept -> void
     {
         argument.value  = string;
@@ -83,16 +90,16 @@ namespace pnk
     }
 
     template <
-        typename           T,
         pnk::static_string brief,
-        pnk::static_string wordy>
+        pnk::static_string wordy,
+        typename           T,
+        bool               needed>
     constexpr auto parse_from_string(
-        pnk::argument<brief, wordy, std::vector<T>>& argument,
-        std::string_view                             string)
+        pnk::argument<brief, wordy, std::vector<T>, needed>& argument,
+        std::string_view                                     string)
     noexcept -> void
     {
-        // HACK: [1]
-        auto subargument = pnk::empty_argument<T>{};
+        auto subargument = pnk::unnamed_argument<T>{};
         parse_from_string(subargument, string);
 
         argument.value.push_back(subargument.value);
@@ -190,7 +197,6 @@ namespace pnk
         }
 
     public:
-        // FIXME: Not very happy with this either.
         constexpr auto
         parse(
             int    argc,
@@ -208,35 +214,49 @@ namespace pnk
                 else
                     parse_position(current);
             }
+
+            auto const index = arguments.find_if([](auto const& arg) noexcept
+            {
+                return declytype(arg)::needed and not arg.parsed;
+            });
+
+            if (index == TypeSet::npos)
+                return;
+
+            // TODO: Print usage.
+            std::exit(69);
         }
 
         template <
             pnk::static_string brief,
             pnk::static_string wordy,
-            typename           T>
+            typename           T,
+            bool               needed>
         constexpr auto add_optional() const noexcept -> decltype(auto)
         {
-            using Argument = argument<brief, wordy, T>;
+            using Argument = pnk::argument<brief, wordy, T, needed>;
             auto new_arguments = arguments.template insert(Argument{});
             return pnk::ctap<decltype(new_arguments)>{};
         }
 
         template <
             pnk::static_string wordy,
-            typename           T>
+            typename           T,
+            bool               needed>
         constexpr auto add_optional() const noexcept -> decltype(auto)
         {
-            using Argument = argument<"", wordy, T>;
+            using Argument = pnk::argument<"", wordy, T, needed>;
             auto new_arguments = arguments.template insert(Argument{});
             return pnk::ctap<decltype(new_arguments)>{};
         }
 
         template <
             pnk::static_string label,
-            typename           T>
+            typename           T,
+            bool               needed>
         constexpr auto add_position() const noexcept -> decltype(auto)
         {
-            using Argument = pnk::argument<"", label, T>;
+            using Argument = pnk::argument<"", label, T, needed>;
             auto new_arguments = arguments.template insert(Argument{});
             return pnk::ctap<decltype(new_arguments)>{};
         }
@@ -245,7 +265,7 @@ namespace pnk
         [[nodiscard]]
         constexpr auto get() const noexcept -> decltype(auto)
         {
-            using Argument = pnk::argument<name, name, void*>;
+            using Argument = pnk::argument<name, name, void*, false>;
             return arguments.template get<Argument>().value;
         }
     };
@@ -268,10 +288,11 @@ namespace pnk
         template <
             pnk::static_string brief,
             pnk::static_string wordy,
-            typename           T>
+            typename           T,
+            bool               needed>
         constexpr auto add_optional() const noexcept
         {
-            using Argument = pnk::argument<brief, wordy, T>;
+            using Argument = pnk::argument<brief, wordy, T, needed>;
             return pnk::ctap<pnk::type_set<comparator, Argument>>{};
         }
 

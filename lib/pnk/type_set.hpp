@@ -137,6 +137,7 @@ namespace pnk
                         if (i == index)
                         {
                             std::invoke(function, std::get<i>(m_data));
+                            return;
                         }
                     }
 
@@ -167,6 +168,7 @@ namespace pnk
                         if (i == index)
                         {
                             std::invoke(function, std::get<i>(m_data));
+                            return;
                         }
                     }
 
@@ -176,7 +178,6 @@ namespace pnk
 
             loop(loop, constant<0>{});
         }
-
 
         template <typename... Others>
         constexpr auto merge(
