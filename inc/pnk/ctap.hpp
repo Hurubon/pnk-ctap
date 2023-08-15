@@ -19,7 +19,7 @@ namespace pnk
         pnk::static_string brief_name,
         pnk::static_string wordy_name,
         typename           T,
-        bool               is_needed = false>
+        bool               is_needed>
     struct argument
     {
         static constexpr auto brief = brief_name;
@@ -231,7 +231,7 @@ namespace pnk
             pnk::static_string brief,
             pnk::static_string wordy,
             typename           T,
-            bool               needed>
+            bool               needed = false>
         constexpr auto add_optional() const noexcept -> decltype(auto)
         {
             using Argument = pnk::argument<brief, wordy, T, needed>;
@@ -242,7 +242,7 @@ namespace pnk
         template <
             pnk::static_string wordy,
             typename           T,
-            bool               needed>
+            bool               needed = false>
         constexpr auto add_optional() const noexcept -> decltype(auto)
         {
             using Argument = pnk::argument<"", wordy, T, needed>;
@@ -253,7 +253,7 @@ namespace pnk
         template <
             pnk::static_string label,
             typename           T,
-            bool               needed>
+            bool               needed = false>
         constexpr auto add_position() const noexcept -> decltype(auto)
         {
             using Argument = pnk::argument<"", label, T, needed>;
@@ -289,7 +289,7 @@ namespace pnk
             pnk::static_string brief,
             pnk::static_string wordy,
             typename           T,
-            bool               needed>
+            bool               needed = false>
         constexpr auto add_optional() const noexcept
         {
             using Argument = pnk::argument<brief, wordy, T, needed>;
@@ -298,19 +298,21 @@ namespace pnk
 
         template <
             pnk::static_string wordy,
-            typename           T>
+            typename           T,
+            bool               needed = false>
         constexpr auto add_optional() const noexcept
         {
-            using Argument = pnk::argument<"", wordy, T>;
+            using Argument = pnk::argument<"", wordy, T, needed>;
             return pnk::ctap<pnk::type_set<comparator, Argument>>{};
         }
 
         template <
             pnk::static_string label,
-            typename           T>
+            typename           T,
+            bool               needed = false>
         constexpr auto add_position() const noexcept
         {
-            using Argument = pnk::argument<"", label, T>;
+            using Argument = pnk::argument<"", label, T, needed>;
             return pnk::ctap<pnk::type_set<comparator, Argument>>{};
         }
     };
