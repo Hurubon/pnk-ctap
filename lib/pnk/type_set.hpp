@@ -1,3 +1,6 @@
+// Copyright (c) Hrvoje "Hurubon" Žohar
+// See end of file for extended copyright information.
+
 #ifndef PNK_TYPE_SET_HPP
 #define PNK_TYPE_SET_HPP
 
@@ -9,6 +12,27 @@ namespace
 {
     template <std::size_t i>
     using constant = std::integral_constant<decltype(i), i>;
+
+    template <
+        template <
+            typename,
+            typename>
+        typename    Comparator,
+        typename... Arguments>
+    struct contains_duplicates : std::false_type
+    {};
+
+    template <
+        template <
+            typename,
+            typename>
+        typename    Comparator,
+        typename    Head,
+        typename... Tail>
+    struct contains_duplicates<Comparator, Head, Tail...> : std::disjunction<
+        std::disjunction<Comparator<Head, Tail>...>,
+        contains_duplicates<Comparator, Tail...>>
+    {};
 }
 
 namespace pnk
@@ -16,86 +40,79 @@ namespace pnk
     namespace detail
     {
         template <
-            template <typename, typename> typename,
-            typename...>
-        struct has_duplicates : std::false_type {};
-
-        template <
-            template <typename, typename> typename Compare,
-            typename                               Head,
-            typename...                            Tail>
-        struct has_duplicates<Compare, Head, Tail...> : std::disjunction<
-            std::disjunction<Compare<Head, Tail>...>,
-            has_duplicates  <Compare, Tail...      >>
+            std::size_t current,
+            template <
+                typename,
+                typename>
+            typename    Comparator,
+            typename    ToFind,
+            typename... Arguments>
+        struct index_of : constant<static_cast<std::size_t>(-1)>
         {};
 
         template <
-            std::size_t,
-            template <typename, typename> typename,
-            typename,
-            typename...>
-        struct index_of : constant<static_cast<std::size_t>(-1)> {};
-
-        template <
-            std::size_t                            current,
-            template <typename, typename> typename Compare,
-            typename                               ToFind,
-            typename                               Head,
-            typename...                            Tail>
-        struct index_of<current, Compare, ToFind, Head, Tail...>
+            std::size_t current,
+            template <
+                typename,
+                typename>
+            typename    Comparator,
+            typename    ToFind,
+            typename    Head,
+            typename... Tail>
+        struct index_of<current, Comparator, ToFind, Head, Tail...>
             : std::conditional_t<
-                Compare<ToFind, Head>::value,
+                Comparator<ToFind, Head>::value,
                 constant<current>,
-                index_of<current + 1, Compare, ToFind, Tail...>>
+                index_of<current + 1, Comparator, ToFind, Tail...>>
         {};
-    }
+    } // namespace detail
 
     template <
-        template <typename, typename> typename Compare,
-        typename...                            Args>
+        template <
+            typename,
+            typename>
+        typename    Comparator,
+        typename... Arguments>
     struct type_set
     {
-    private:
-        std::tuple<Args...> m_data;
-
-        [[nodiscard]]
-        static consteval auto has_duplicates() noexcept -> bool
-        {
-            return detail::has_duplicates<Compare, Args...>::value;
-        }
-
-        template <typename ToFind>
-        [[nodiscard]]
-        static consteval auto index_of() noexcept -> std::size_t
-        {
-            return detail::index_of<0, Compare, ToFind, Args...>::value;
-        }
-
     public:
+        // All type_sets are friends with eachother.
+        template <
+            template <
+                typename,
+                typename>
+            typename,
+            typename...>
+        friend struct pnk::type_set;
+
+        [[nodiscard]]
         constexpr type_set() noexcept = default;
-        constexpr type_set(std::tuple<Args...> const& data) noexcept
+        [[nodiscard]]
+        constexpr type_set(std::tuple<Arguments...> const& data) noexcept
             : m_data{ data }
         {
             static_assert(
-                not has_duplicates(),
+                not contains_duplicates<Comparator, Arguments...>(),
                 "Cannot create a set with duplicate keys.");
         }
-        constexpr type_set(std::tuple<Args...>&& data) noexcept
+        [[nodiscard]]
+        constexpr type_set(std::tuple<Arguments...>&& data) noexcept
             : m_data{ data }
         {
             static_assert(
-                not has_duplicates(),
+                not contains_duplicates<Comparator, Arguments...>(),
                 "Cannot create a set with duplicate keys.");
         }
 
         template <typename Predicate>
-        constexpr auto find_if(
+        [[nodiscard]]
+        auto constexpr find_if(
             Predicate&& predicate)
         const noexcept -> std::size_t
         {
             auto const loop = [&]<std::size_t i>(auto&& self, constant<i>)
             {
-                if constexpr (i == sizeof...(Args))
+                if constexpr (i == sizeof...(Arguments))
                 {
                     return npos;
                 }
@@ -118,14 +135,14 @@ namespace pnk
         }
 
         template <typename Function>
-        constexpr auto apply(
+        auto constexpr apply_at(
             std::size_t index,
             Function&&  function)
         noexcept -> void
         {
-            auto const loop = [&, index]<std::size_t i>(auto&& self, constant<i>)
+            auto const loop = [&]<std::size_t i>(auto&& self, constant<i>)
             {
-                if constexpr (i == sizeof...(Args))
+                if constexpr (i == sizeof...(Arguments))
                 {
                     return;
                 }
@@ -149,14 +166,14 @@ namespace pnk
         }
 
         template <typename Function>
-        constexpr auto apply(
+        auto constexpr apply_at(
             std::size_t index,
             Function&&  function)
         const noexcept -> void
         {
-            auto const loop = [&, index]<std::size_t i>(auto&& self, constant<i>)
+            auto const loop = [&]<std::size_t i>(auto&& self, constant<i>)
             {
-                if constexpr (i == sizeof...(Args))
+                if constexpr (i == sizeof...(Arguments))
                 {
                     return;
                 }
@@ -180,50 +197,84 @@ namespace pnk
         }
 
         template <typename... Others>
-        constexpr auto merge(
-            type_set<Compare, Others...> const& other)
-        const noexcept -> type_set<Compare, Args..., Others...>
+        [[nodiscard]]
+        auto constexpr disjoint_union(
+            pnk::type_set<Comparator, Others...> const& other)
+        const noexcept -> pnk::type_set<Comparator, Arguments..., Others...>
         {
             return std::tuple_cat(m_data, other.m_data);
         }
 
-        template <typename T>
-        constexpr auto insert(
-            T&& t)
-        const& noexcept -> type_set<Compare, Args..., std::remove_cvref_t<T>>
+        template <typename Argument>
+        [[nodiscard]]
+        auto constexpr insert(
+            Argument&& a)
+        const & noexcept -> pnk::type_set<
+            Comparator,
+            Arguments...,
+            std::remove_cvref_t<Argument>>
         {
-            using Key = std::remove_cvref_t<T>;
+            using Key = std::remove_cvref_t<Argument>;
             return std::tuple_cat(
-                m_data,
-                std::tuple<Key>(std::forward<T>(t)));
+                m_data, std::tuple<Key>(std::forward<Argument>(a)));
         }
 
-        template <typename T>
-        constexpr auto insert(
-            T&& t)
-        && noexcept -> type_set<Compare, Args..., std::remove_cvref_t<T>>
+        template <typename Argument>
+        [[nodiscard]]
+        auto constexpr insert(
+            Argument&& a)
+        const && noexcept -> pnk::type_set<
+            Comparator,
+            Arguments...,
+            std::remove_cvref_t<Argument>>
         {
-            using Key = std::remove_cvref_t<T>;
+            using Key = std::remove_cvref_t<Argument>;
             return std::tuple_cat(
-                std::move(m_data),
-                std::tuple<Key>(std::forward<T>(t)));
+                std::move(m_data), std::tuple<Key>(std::forward<Argument>(a)));
         }
 
         template <typename Key>
-        constexpr auto get() const noexcept -> decltype(auto)
+        [[nodiscard]]
+        auto constexpr get() const noexcept
         {
-            constexpr auto i = index_of<Key>();
+            auto constexpr i = index_of<Key>();
             static_assert(i != npos, "Cannot find key.");
-            if constexpr (i != npos)
-                return std::get<i>(m_data);
+            return std::get<i>(m_data);
         }
 
-        // All type_sets are friends with eachother.
-        template <template <typename, typename> typename, typename...>
-        friend struct type_set;
+    auto constexpr static npos = static_cast<std::size_t>(-1);
 
-        static constexpr std::size_t npos = static_cast<std::size_t>(-1);
-    };
+    private:
+        template <typename ToFind>
+        [[nodiscard]]
+        auto consteval static index_of() noexcept -> std::size_t
+        {
+            return detail::index_of<0, Comparator, ToFind, Arguments...>::value;
+        }
+
+        std::tuple<Arguments...> m_data;
+    }; // struct type_set
 } // namespace pnk
 
 #endif // PNK_TYPE_SET_HPP
+
+// MIT License
+// Copyright (c) Hrvoje "Hurubon" Žohar
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
