@@ -201,9 +201,10 @@ namespace pnk
         [[nodiscard]]
         auto constexpr disjoint_union(
             pnk::type_set<Comparator, Others...> const& other)
-        const noexcept -> pnk::type_set<Comparator, Arguments..., Others...>
+        const noexcept
         {
-            return std::tuple_cat(m_data, other.m_data);
+            return pnk::type_set<Comparator, Arguments..., Others...>(
+                std::tuple_cat(m_data, other.m_data));
         }
 
         template <typename Argument>
