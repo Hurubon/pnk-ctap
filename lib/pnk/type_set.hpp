@@ -88,7 +88,7 @@ namespace pnk
         [[nodiscard]]
         constexpr type_set() noexcept = default;
         [[nodiscard]]
-        constexpr type_set(std::tuple<Arguments...> const& data) noexcept
+        constexpr explicit type_set(std::tuple<Arguments...> const& data) noexcept
             : m_data{ data }
         {
             static_assert(
@@ -96,7 +96,7 @@ namespace pnk
                 "Cannot create a set with duplicate keys.");
         }
         [[nodiscard]]
-        constexpr type_set(std::tuple<Arguments...>&& data) noexcept
+        constexpr explicit type_set(std::tuple<Arguments...>&& data) noexcept
             : m_data{ data }
         {
             static_assert(
@@ -215,27 +215,28 @@ namespace pnk
             std::remove_cvref_t<Argument>>
         {
             using Key = std::remove_cvref_t<Argument>;
-            return std::tuple_cat(
-                m_data, std::tuple<Key>(std::forward<Argument>(a)));
+            return pnk::type_set<Comparator, Arguments..., Key>(
+                std::tuple_cat(
+                    m_data,
+                    std::tuple<Key>(std::forward<Argument>(a))));
         }
 
         template <typename Argument>
         [[nodiscard]]
         auto constexpr insert(
             Argument&& a)
-        const && noexcept -> pnk::type_set<
-            Comparator,
-            Arguments...,
-            std::remove_cvref_t<Argument>>
+        const && noexcept
         {
             using Key = std::remove_cvref_t<Argument>;
-            return std::tuple_cat(
-                std::move(m_data), std::tuple<Key>(std::forward<Argument>(a)));
+            return pnk::type_set<Comparator, Arguments..., Key>(
+                std::tuple_cat(
+                    std::move(m_data),
+                    std::tuple<Key>(std::forward<Argument>(a))));
         }
 
         template <typename Key>
         [[nodiscard]]
-        auto constexpr get() const noexcept
+        auto constexpr get() const noexcept -> decltype(auto)
         {
             auto constexpr i = index_of<Key>();
             static_assert(i != npos, "Cannot find key.");

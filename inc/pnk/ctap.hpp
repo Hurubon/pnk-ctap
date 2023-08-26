@@ -127,8 +127,8 @@ namespace pnk
     {
     public:
         [[nodiscard]]
-        constexpr ctap_result(TypeSet&& arguments) noexcept
-            : m_arguments(std::move(arguments))
+        constexpr explicit ctap_result(TypeSet&& arguments) noexcept
+            : m_arguments{ arguments }
         {}
 
         template <pnk::static_string name>
@@ -223,7 +223,7 @@ namespace pnk
         auto constexpr parse(
             int                const argc,
             char const* const* const argv)
-        noexcept
+        noexcept -> pnk::ctap_result
         {
             for (auto i = argv + 1; i < argv + argc; ++i)
             {
