@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <tuple>
+#include <functional>
 #include <type_traits>
 
 namespace
