@@ -19,7 +19,7 @@ namespace pnk
     // NOTE:
     // This interface currently only provides the minimal operations needed for
     // pnk::ctap. It will be expanded as it becomes used in other projects. 
-    template <std::size_t n>
+    template <std::size_t size>
     struct static_string
     {
         // TODO: Generalize to any character type.
@@ -38,35 +38,35 @@ namespace pnk
         using const_reverse_iterator = std::reverse_iterator<const_iterator>;
         using view_type              = std::basic_string_view<value_type>;
 
-        constexpr static_string(value_type const (&s)[n])
+        constexpr static_string(value_type const (&s)[size])
         {
-            std::copy(s, s + n, m_data);
+            std::copy(s, s + size, m_data);
         }
 
-        // Iterator interface.
-        [[nodiscard]] constexpr auto begin  ()       noexcept -> iterator               { return m_data;                   }
-        [[nodiscard]] constexpr auto begin  () const noexcept -> const_iterator         { return m_data;                   }
-        [[nodiscard]] constexpr auto cbegin () const noexcept -> const_iterator         { return m_data;                   }
-        [[nodiscard]] constexpr auto end    ()       noexcept -> iterator               { return std::next(m_data, n);     }
-        [[nodiscard]] constexpr auto end    () const noexcept -> const_iterator         { return std::next(m_data, n);     }
-        [[nodiscard]] constexpr auto cend   () const noexcept -> const_iterator         { return std::next(m_data, n);     }
-        [[nodiscard]] constexpr auto rbegin ()       noexcept -> reverse_iterator       { return std::next(m_data, n - 1); }
-        [[nodiscard]] constexpr auto rbegin () const noexcept -> const_reverse_iterator { return std::next(m_data, n - 1); }
-        [[nodiscard]] constexpr auto crbegin() const noexcept -> const_reverse_iterator { return std::next(m_data, n - 1); }
-        [[nodiscard]] constexpr auto rend   ()       noexcept -> reverse_iterator       { return std::prev(m_data);        }
-        [[nodiscard]] constexpr auto rend   () const noexcept -> const_reverse_iterator { return std::prev(m_data);        }
-        [[nodiscard]] constexpr auto crend  () const noexcept -> const_reverse_iterator { return std::prev(m_data);        }
+        // Iterator interfac
+        [[nodiscard]] constexpr auto begin  ()       noexcept -> iterator               { return m_data;                      }
+        [[nodiscard]] constexpr auto begin  () const noexcept -> const_iterator         { return m_data;                      }
+        [[nodiscard]] constexpr auto cbegin () const noexcept -> const_iterator         { return m_data;                      }
+        [[nodiscard]] constexpr auto end    ()       noexcept -> iterator               { return std::next(m_data, size);     }
+        [[nodiscard]] constexpr auto end    () const noexcept -> const_iterator         { return std::next(m_data, size);     }
+        [[nodiscard]] constexpr auto cend   () const noexcept -> const_iterator         { return std::next(m_data, size);     }
+        [[nodiscard]] constexpr auto rbegin ()       noexcept -> reverse_iterator       { return std::next(m_data, size - 1); }
+        [[nodiscard]] constexpr auto rbegin () const noexcept -> const_reverse_iterator { return std::next(m_data, size - 1); }
+        [[nodiscard]] constexpr auto crbegin() const noexcept -> const_reverse_iterator { return std::next(m_data, size - 1); }
+        [[nodiscard]] constexpr auto rend   ()       noexcept -> reverse_iterator       { return std::prev(m_data);           }
+        [[nodiscard]] constexpr auto rend   () const noexcept -> const_reverse_iterator { return std::prev(m_data);           }
+        [[nodiscard]] constexpr auto crend  () const noexcept -> const_reverse_iterator { return std::prev(m_data);           }
 
         [[nodiscard]]
         consteval auto empty() const noexcept -> bool
         {
-            return n == 1;
+            return size == 1;
         }
 
         [[nodiscard]]
         constexpr operator view_type() const noexcept
         {
-            return view_type(m_data, n - 1);
+            return view_type(m_data, size - 1);
         }
 
         friend constexpr auto operator<=>(
@@ -74,7 +74,7 @@ namespace pnk
             static_string const&)
         noexcept = default;
 
-        value_type m_data[n];
+        value_type m_data[size];
     };
 
     template <

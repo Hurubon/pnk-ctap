@@ -60,7 +60,6 @@ namespace pnk
         bool               needed>
     struct argument
     {
-        using value_type = T;
         using type       = T;
 
         auto constexpr static brief = brief_name;
@@ -69,35 +68,18 @@ namespace pnk
 
         mutable bool was_parsed = false;
         mutable type value;
-
-        [[nodiscard]]
-        constexpr operator value_type() const noexcept
-        {
-            return value;
-        }
     };
 
-    // Functions for parsing common types from text. You may add your own. If
-    // you got a scary error saying something like "call to deleted function",
-    // you probably forgot to add an overload for your type.
-    template <
-        pnk::static_string brief,
-        pnk::static_string wordy,
-        typename           T,
-        bool               needed>
-    constexpr auto parse_from_text(
-        pnk::argument<brief, wordy, T, needed>&,
-        std::string_view)
-    noexcept -> void = delete;
+    auto constexpr parse_visitor(auto, auto) noexcept -> void = delete; 
 
     template <
         pnk::static_string brief,
         pnk::static_string wordy,
         bool               needed>
-    constexpr auto parse_from_text(
+    auto constexpr parse_visitor(
         pnk::argument<brief, wordy, bool, needed>& argument,
         std::string_view)
-    noexcept -> void
+    noexcept
     {
         argument.was_parsed = true;
         argument.value      = true;
@@ -108,30 +90,32 @@ namespace pnk
         pnk::static_string wordy,
         typename           T,
         bool               needed>
-    constexpr auto parse_from_text(
+    auto constexpr parse_visitor(
         pnk::argument<brief, wordy, T, needed>& argument,
-        std::string_view                        text)
-    noexcept -> void
-    requires (std::integral<T> or std::floating_point<T>)
+        std::string_view                        to_parse)
+    noexcept requires (std::integral<T> or std::floating_point<T>)
     {
-        auto const [pointer, _] = std::from_chars(
-            text.data(),
-            text.data() + text.size(),
-            argument.value);
-        argument.was_parsed = (pointer == text.data() + text.size());
+        // std::string_view::begin isn't guaranteed to be char const*.
+        auto const begin  = to_parse.data();
+        auto const end    = to_parse.data() + to_parse.size();
+        auto const [p, _] = std::from_chars(begin, end, argument.value);
+        if (p == end)
+            argument.was_parsed = true;
+        else
+            argument.was_parsed = false;
     }
 
     template <
         pnk::static_string brief,
         pnk::static_string wordy,
         bool               needed>
-    constexpr auto parse_from_text(
+    auto constexpr parse_visitor(
         pnk::argument<brief, wordy, std::string_view, needed>& argument,
-        std::string_view                                       text)
-    noexcept -> void
+        std::string_view                                       to_parse)
+    noexcept
     {
         argument.was_parsed = true;
-        argument.value      = text;
+        argument.value      = to_parse;
     }
 
     // See type_set.hpp for more information.
@@ -262,7 +246,7 @@ namespace pnk
                 return T::is_needed and not a.was_parsed;
             });
 
-            if (index < 0)
+            if (index == decltype(disjoint_union)::npos)
             {
                 return pnk::ctap_result(std::move(disjoint_union));
             }
@@ -282,7 +266,7 @@ namespace pnk
         {
             auto const hyphen_offset = wordy + 1;
             auto const equals_index  = current.find('=');
-
+            auto const npos = BooleansTypeSet::npos;
             auto const name = equals_index != std::string_view::npos?
                 current.substr(hyphen_offset, equals_index - hyphen_offset) :
                 current.substr(hyphen_offset);
@@ -295,27 +279,25 @@ namespace pnk
                     return T::brief == name;
             };
 
-            if (auto const index = m_booleans.find_if(matches_name);
-                index != BooleansTypeSet::npos)
+            if (auto const i = m_booleans.find_if(matches_name); i != npos)
             {
-                m_booleans.apply_at(index, [](auto& a)
+                m_booleans.apply_at(i, [](auto& argument)
                 {
-                    pnk::parse_from_text(a, {});
+                    pnk::parse_visitor(argument, {});
                 });
 
                 return 0;
             }
 
-            if (auto const index = m_optionals.find_if(matches_name);
-                index != OptionalsTypeSet::npos)
+            if (auto const i = m_optionals.find_if(matches_name); i != npos)
             {
                 auto const value = equals_index != std::string_view::npos?
                     current.substr(equals_index + 1) :
                     std::string_view(*next_it);
 
-                m_optionals.apply_at(index, [value](auto& a)
+                m_optionals.apply_at(i, [value](auto& argument)
                 {
-                    pnk::parse_from_text(a, value);
+                    pnk::parse_visitor(argument, value);
                 });
 
                 return equals_index == std::string_view::npos;
@@ -325,19 +307,19 @@ namespace pnk
             std::exit(64);
         }
 
-        auto constexpr parse_position(std::string_view current) noexcept -> void
+        auto constexpr parse_position(std::string_view value) noexcept -> void
         {
-            auto const wasnt_parsed = [](auto&& a) constexpr noexcept
+            auto const npos = PositionsTypeSet::npos;
+            auto const wasnt_parsed = [](auto&& argument) constexpr noexcept
             {
-                return not a.was_parsed;
+                return not argument.was_parsed;
             };
 
-            if (auto const index = m_positions.find_if(wasnt_parsed);
-                index != PositionsTypeSet::npos)
+            if (auto const i = m_positions.find_if(wasnt_parsed); i != npos)
             {
-                m_positions.apply_at(index, [current](auto& a)
+                m_positions.apply_at(i, [value](auto& argument)
                 {
-                    pnk::parse_from_text(a, current);
+                    pnk::parse_visitor(argument, value);
                 });
             }
             else
