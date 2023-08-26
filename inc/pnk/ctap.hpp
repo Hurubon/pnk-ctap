@@ -223,7 +223,7 @@ namespace pnk
         auto constexpr parse(
             int                const argc,
             char const* const* const argv)
-        noexcept -> pnk::ctap_result
+        noexcept
         {
             for (auto i = argv + 1; i < argv + argc; ++i)
             {
